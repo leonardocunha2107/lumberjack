@@ -45,10 +45,10 @@ class Logger:
                     self.sw.add_scalar(f"model/{k}",v,self.model_t)
         self.model_t+=1
                     
-    def close_epoch(self,model,valid_loader=None,valid_metrics_fn=None):
+    def close_epoch(self,model,valid_loader=None):
         if self.opt.no_log:
             return
-        assert valid_loader==None or valid_metrics_fn!=None
+
         device='cuda' if next(model.parameters()).is_cuda else 'cpu'
         if self.verbose:
             logstr=""
@@ -64,7 +64,7 @@ class Logger:
 
                 for x in valid_loader:
                     x=x.to(device=device)
-                    dic=valid_metrics_fn(model,x,self.opt)
+                    dic=model(x)
                     assert all([k in self.metric_keys for k in dic.keys()])
                     
                     for k,v in dic.items():
@@ -91,9 +91,4 @@ class Logger:
             return
         torch.save({'state_dict':model.state_dict(),
                     'opt':self.opt}, path.join(self.summ_path,'mdl.pt'))
-        embeds,labels=dataset.get_embeds(model,self.opt)
-        if opt.tb_projection:
-            self.sw.add_embedding(embeds,tag=f'embed',
-                                      metadata=labels)
-            
-        self.sw.close()
+
