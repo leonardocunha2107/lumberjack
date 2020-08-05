@@ -3,6 +3,8 @@ from torch.utils.tensorboard import SummaryWriter
 import os.path as path
 import shutil
 import numpy as np
+import json
+
 
 SEP='-'*40
 class Logger:
@@ -12,20 +14,41 @@ class Logger:
         if self.opt.no_log:
             return
         self.metric_keys=set(metric_keys)
-        self.summ_path=path.join(opt.logdir,experiment_name)
-        if path.isdir(self.summ_path):
-            if not opt.no_verbose: print(f"Deleting logs at {self.summ_path}")
-            shutil.rmtree(self.summ_path, ignore_errors=True)
+        
+        
+        
+        config_item={'model_str':model_str,
+                     'exp_name':experiment_name}
+        config_path=path.join(opt.logdir,'logger_config.json')
+        if path.exists(config_path):
+            with open(config_path) as fd:
+                config_dict=json.load(fd)
+            exp_id=int(list(config_dict.keys())[-1])+1
+        else:
+           exp_id=1 
+           config_dict=dict()
+        config_dict[exp_id]=config_item
+        with open(config_path,'w+') as fd:
+            json.dump(config_dict,fd,indent=2)
+        
+        self.tag=str(exp_id)
+        self.summ_path=path.join(opt.logdir,self.tag)  
         self.sw=SummaryWriter(self.summ_path)
-        self.tag=experiment_name
+        
+        print(f"Running {experiment_name} as exp_{exp_id}")
         if model_str:
-            self.sw.add_text(f'model/{self.tag}',model_str)
+            self.sw.add_text(f'model',model_str)
         self.epoch_log={k:[] for k in self.metric_keys}
         self.verbose=not opt.no_verbose
         self.t=0
         self.model_t=0
         self.valid_t=0
         self.epoch=0
+        
+    def save_fig(self,fig,fig_name):
+        fig_path=path.join(self.summ_path,f'{fig_name}_{self.tag}')
+        fig.savefig(fig_path)
+        
     def push_train_metrics_dict(self,dic):
         if self.opt.no_log:
             return

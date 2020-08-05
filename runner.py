@@ -129,7 +129,6 @@ def run(dataset,model,parser_config=None,logger_class=Logger,**kwargs):
             for key  in custom_config['secondary_args']: experiment_name+=f"{key}_{opt.__dict__[key]}_" if opt.__dict__[key] else ""
         #experiment_name+=f"datadim_{opt.data_dim}"
         opt.experiment_name=experiment_name
-    print(f"Running {experiment_name}")
     if device=='cuda': print(f"Data memory usage {torch.cuda.memory_allocated()}")
     
     ##create model
@@ -145,12 +144,11 @@ def run(dataset,model,parser_config=None,logger_class=Logger,**kwargs):
     logger=logger_class(experiment_name,metrics_keys,opt,model_str=str(model))
     optimizer=torch.optim.Adam(model.parameters(),lr=opt.lr,
                                weight_decay=opt.weight_decay)
+    iterable=tqdm(train_loader) if opt.tqdm else train_loader
     
     for epoch in range(1,opt.epochs+1):
-        t_start=time()
         model.train()
-        iterable=tqdm(train_loader) if opt.tqdm else train_loader
-        
+        t_start=time()
         for x in iterable:
             x=x.to(device=device)
             optimizer.zero_grad()
