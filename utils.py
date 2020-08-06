@@ -2,6 +2,27 @@ import torch
 from os import path
 import numpy as np
 from itertools import product
+import os
+
+def post_analysis(logdir,func):
+    ##func takes state_dict and opt and returns a dict like {'fig_tsne':plt.fig}
+    
+    dirs=[path.join(logdir,t) for t in os.listdir(logdir)
+          if path.isdir(path.join(logdir,t))]
+    mdls=[path.join(t,'mdl.pt') for t in dirs]
+    for direc,mdl_path in zip(dirs,mdls):
+        if not path.exists(mdl_path):
+            continue
+        dirname=direc.split(path.sep)[-1]
+        aux=torch.load(mdl_path,map_location='cuda')
+        dic=func(aux['state_dict'],aux['opt'])
+        for k,v in dic.items():
+            tip,name=k.split('_')
+            if tip=='fig':
+                v.savefig(path.join(direc,f'{name}_{dirname}.png'))
+        
+        
+
 
 def rand_indices(n,k):
     return torch.randperm(n).tolist()[:k]
