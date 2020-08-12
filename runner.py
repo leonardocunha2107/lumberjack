@@ -133,13 +133,11 @@ def run(dataset,model,parser_config=None,logger_class=Logger,**kwargs):
     
     ##create model
 
-    if not isinstance(model,nn.Module):
-        if isinstance(model,FunctionType):
-            model=model(opt)
-        
-        model=model(opt)
+
+    model=model(opt)
     metrics_keys=model.metrics_keys
     model=model.to(device=device)
+    print(metrics_keys)
         
     logger=logger_class(experiment_name,metrics_keys,opt,model_str=str(model))
     optimizer=torch.optim.Adam(model.parameters(),lr=opt.lr,

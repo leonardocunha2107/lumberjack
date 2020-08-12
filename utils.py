@@ -14,7 +14,9 @@ def post_analysis(logdir,func):
         if not path.exists(mdl_path):
             continue
         dirname=direc.split(path.sep)[-1]
-        aux=torch.load(mdl_path,map_location='cuda')
+        device='cuda' if torch.cuda.is_available() else 'cpu'
+        aux=torch.load(mdl_path,map_location=device)
+        aux['opt'].device=device
         dic=func(aux['state_dict'],aux['opt'])
         for k,v in dic.items():
             tip,name=k.split('_')
