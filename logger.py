@@ -56,7 +56,7 @@ class Logger:
         
         for k,v in dic.items():
             if self.opt.debug and torch.isnan(v):
-                raise Exception('nan')
+                print("NAN")#raise Exception('nan')
             v=float(v)
             self.epoch_log[k].append(v)
             self.sw.add_scalar(f"{k}/train",v,self.t)

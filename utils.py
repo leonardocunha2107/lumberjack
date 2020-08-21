@@ -3,26 +3,34 @@ from os import path
 import numpy as np
 from itertools import product
 import os
+from time import time
+import json
 
-def post_analysis(logdir,func):
-    ##func takes state_dict and opt and returns a dict like {'fig_tsne':plt.fig}
-    
-    dirs=[path.join(logdir,t) for t in os.listdir(logdir)
-          if path.isdir(path.join(logdir,t))]
-    mdls=[path.join(t,'mdl.pt') for t in dirs]
+def cross_model_analysis(logdir,func,**kwargs):
+    ##func takes path and returns a dict like {'fig_tsne':plt.fig}
+    if path.exists(path.join(logdir,'mdl.pt')):
+        dirs=[logdir]
+        mdls=[path.join(logdir,'mdl.pt')]
+    else:
+        dirs=[path.join(logdir,t) for t in os.listdir(logdir)
+              if path.isdir(path.join(logdir,t))]
+        mdls=[path.join(t,'mdl.pt') for t in dirs]
     for direc,mdl_path in zip(dirs,mdls):
+        t_start=time()
         if not path.exists(mdl_path):
             continue
         dirname=direc.split(path.sep)[-1]
-        device='cuda' if torch.cuda.is_available() else 'cpu'
-        aux=torch.load(mdl_path,map_location=device)
-        aux['opt'].device=device
-        dic=func(aux['state_dict'],aux['opt'])
+        dic=func(mdl_path,**kwargs)
+        print(f'Done {direc} \n in {time()-t_start}')
+
         for k,v in dic.items():
             tip,name=k.split('_')
+            fname=f'{name}_{dirname}'
             if tip=='fig':
-                v.savefig(path.join(direc,f'{name}_{dirname}.png'))
-        
+                v.savefig(path.join(direc,f'{fname}.png'))
+            elif tip=='json':
+                with open(f'{fname}.json','w+') as fd:
+                    json.dump(v,fd)
         
 
 
@@ -30,20 +38,7 @@ def rand_indices(n,k):
     return torch.randperm(n).tolist()[:k]
 def choices(inp,k):
     return [inp[idx] for idx in rand_indices(len(inp),k)]
-def model_from_path(path,device=None):
-    if not device:
-        device='cuda' if torch.cuda.is_available() else 'cpu'
-    if root_log_path not in path: path=path.join(root_log_path,path)
-    if 'model_' not in path or 'model_vae' in path:
-        from vae import VAE as mdl_class
-    elif 'model_vrnn' in path:
-        from vrnn import VRNN as mdl_class
-    else: raise NotImplemented
-    aux=torch.load(path,map_location=torch.device(device))
-    state_dict,opt=aux['state_dict'],aux['opt']
-    model=mdl_class(opt).to(device=device)
-    model.load_state_dict(state_dict)
-    return model,opt
+
 def sample_from_cell(mins,maxs,num_samples=100,device=None):
     if not device:
         device='cuda' if torch.cuda.is_available() else 'cpu'

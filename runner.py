@@ -1,18 +1,15 @@
 import argparse
 import random
-"""try:
-    from .logger import Logger
-except:
-    from logger import Logger
-"""
 from lumberjack.logger import Logger
 import torch
 import torch.nn as nn
 import json
-from types import FunctionType
 import os.path as path
 from time import time
 from tqdm import tqdm
+import pdb
+import traceback
+
 
 
 def run(dataset,model,parser_config=None,logger_class=Logger,**kwargs):
@@ -69,7 +66,7 @@ def run(dataset,model,parser_config=None,logger_class=Logger,**kwargs):
     parser.add_argument('--valid_cut',type=float,default=0.9)
     parser.add_argument('--no_log',action='store_true')
     parser.add_argument('--tqdm',action='store_true')
-    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--debug', type=str,default=None,choices=('anomaly','metric'))
     parser.add_argument('--clip',type=float)
     parser.add_argument('--seed',type=int,default=42)
     parser.add_argument('--data_device',type=str,choices=('cuda','cpu'),default='cuda')
@@ -148,17 +145,22 @@ def run(dataset,model,parser_config=None,logger_class=Logger,**kwargs):
         model.train()
         t_start=time()
         for x in iterable:
-            x=x.to(device=device)
-            optimizer.zero_grad()
-            dic=model(x)
-            dic['loss'].backward()
-            if opt.clip: nn.utils.clip_grad_norm_(model.parameters(), opt.clip)
-            if hasattr(model,'metrics'):
-                logger.push_model_metrics_dict(model.metrics(opt))
-            
+            with torch.autograd.set_detect_anomaly(opt.debug=='anomaly'):
+                x=x.to(device=device)
+                optimizer.zero_grad()
+                try:
+                    dic=model(x)
+                    dic['loss'].backward()
+                    if opt.clip: nn.utils.clip_grad_norm_(model.parameters(), opt.clip)
+                    if hasattr(model,'metrics'):
+                        logger.push_model_metrics_dict(model.metrics(opt))
+                except :
+                    traceback.print_exc()
+                    logger.close(model,dataset)
+                    if opt.debug=='anomaly': pdb.set_trace()
             optimizer.step()
             logger.push_train_metrics_dict(dic)
         logger.close_epoch(model,valid_loader)
         if opt.verbose: print(f"Epoch {epoch} done in {time()-t_start}")
     logger.close(model,dataset)
-    logger.sw.close()
+    
