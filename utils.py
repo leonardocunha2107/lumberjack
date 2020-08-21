@@ -19,7 +19,7 @@ def cross_model_analysis(logdir,func,**kwargs):
         t_start=time()
         if not path.exists(mdl_path):
             continue
-        dirname=direc.split(path.sep)[-1]
+        dirname=direc.split('/')[-1]
         dic=func(mdl_path,**kwargs)
         print(f'Done {direc} \n in {time()-t_start}')
 
@@ -31,6 +31,7 @@ def cross_model_analysis(logdir,func,**kwargs):
             elif tip=='json':
                 with open(f'{fname}.json','w+') as fd:
                     json.dump(v,fd)
+            else: print(f'{tip} return is not implemented')
         
 
 
