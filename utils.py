@@ -3,8 +3,22 @@ from os import path
 import numpy as np
 from itertools import product
 import os
-from time import time
+from time import time,sleep
 import json
+from datetime import datetime
+from tqdm import tqdm
+import pickle
+class Timer:
+    def __init__(self,process_name='PROCESS'):
+        self.string=process_name
+    def __enter__(self):
+        self.start=time()
+        print(f'Starting {self.string}')        
+    def __exit__(self,type,value,traceback):
+        self.stamp=time()-self.start
+        if value: print(traceback)
+        print(f'{self.string} was finished on {self.stamp}')
+                
 
 def cross_model_analysis(logdir,func,**kwargs):
     ##func takes path and returns a dict like {'fig_tsne':plt.fig}
@@ -29,8 +43,11 @@ def cross_model_analysis(logdir,func,**kwargs):
             if tip=='fig':
                 v.savefig(path.join(direc,f'{fname}.png'))
             elif tip=='json':
-                with open(f'{fname}.json','w+') as fd:
+                with open(path.join(direc,f'{fname}.json'),'w+') as fd:
                     json.dump(v,fd)
+            elif tip=='pkl':
+                with open(path.join(direc,f'{fname}.pkl'),'w+') as fd:
+                    pickle.dump(v,fd)
             else: print(f'{tip} return is not implemented')
         
 
@@ -55,28 +72,28 @@ def get_grid(mins,maxs,ks,grid_type='lin'):
         distr=norm()
         grid=[]
         for m,M,k in zip(mins,maxs,ks):
-            bounds_for_range = distribution.cdf([m, M])
-            pp = np.linspace(*bounds_for_range, num=k)
-            grid.append(distribution.ppf(pp))
+            bounds_for_range = distr.cdf([m, M])
+        pp = np.linspace(*bounds_for_range, num=k)
+        grid.append(distr.ppf(pp))
     else:
         grid=[np.linspace(m,M,k) for m,M,k in zip(mins,maxs,ks)]
     return np.array(grid)
 def grid_generator(grid,ks,return_idxs=False):
-    from itertools import product
     drange=list(range(len(ks)))
     for idxs in product(*(range(k-1) for k in ks)):
         mins,maxs=grid[drange,idxs], grid[drange,[idx+1 for idx in idxs]]
         if return_idxs: yield mins,maxs,idxs
         else: yield mins,maxs
 def eval_grid(func,mins=[-1.5,-1.5],maxs=None,ks=[6,6],grid_type='lin',
-              return_grid=False,**sample_args):
+              return_grid=False,eval_type="torch" , **sample_args):
     assert len(ks)==len(mins)
-    if not maxs: maxs=[-m for m in mins]
+    if type(maxs) not in(np.array,list): maxs=[-m for m in mins]
     grid=get_grid(mins,maxs,ks,grid_type)
-    stats=np.empty(tuple(k-1 for k in ks),dtype=object)
-    for mins,maxs,idxs in iter(grid_generator(grid,ks,return_idxs=True)):
+    stats=np.empty(tuple(k-1 for k in ks))
+    for mins,maxs,idxs in tqdm(iter(grid_generator(grid,ks,return_idxs=True))):
         inp=sample_from_cell(mins,maxs,**sample_args)
+        if eval_type!='torch': inp=inp.cpu().numpy()
         x=func(inp)
-        stats[idxs]={'stat':x,'grid':(mins,maxs)}
+        stats[idxs]=x
     if return_grid: return stats,grid
     return stats

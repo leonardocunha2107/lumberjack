@@ -86,7 +86,9 @@ def run(dataset,model,parser_config=None,logger_class=Logger,**kwargs):
     if path.exists('config.json') and not opt.no_config:
         with open('config.json') as fd:
             opt.__dict__.update(json.load(fd))
-    if 'opt_' in kwargs: opt.__dict__.update(kwargs['opt_'].__dict__)
+    if 'opt_' in kwargs: opt.__dict__.update(kwargs['opt_'].__dict__ if not 
+                             type(kwargs['opt_'])==dict else kwargs['opt_'])
+    
     torch.manual_seed(opt.seed)
     random.seed(opt.seed)
     
