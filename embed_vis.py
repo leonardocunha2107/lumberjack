@@ -41,4 +41,4 @@ def mult_distr_plot(data,labels ,cmap=None,**kwargs):
                    ,cmap=cmap[l] if cmap else None,n_levels=6, shade=False, 
                    shade_lowest=False,cbar=False)
 
-    return projs.fig
+    return projs

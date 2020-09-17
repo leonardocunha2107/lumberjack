@@ -46,7 +46,7 @@ def cross_model_analysis(logdir,func,**kwargs):
                 with open(path.join(direc,f'{fname}.json'),'w+') as fd:
                     json.dump(v,fd)
             elif tip=='pkl':
-                with open(path.join(direc,f'{fname}.pkl'),'w+') as fd:
+                with open(path.join(direc,f'{fname}.pkl'),'wb') as fd:
                     pickle.dump(v,fd)
             else: print(f'{tip} return is not implemented')
         
